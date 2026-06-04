@@ -16,26 +16,26 @@ connect_pg() {
     echo "PostgreSQL — Read/Write (primary)"
     echo "  Host:     127.0.0.1:30433"
     echo "  User:     postgres"
-    echo "  Password: mongo123"
+    echo "  Password: postgres123"
     echo "  Database: postgres"
     echo ""
     echo "  Command:"
-    echo "    PGPASSWORD=mongo123 psql -h 127.0.0.1 -p 30433 -U postgres -d postgres"
+    echo "    PGPASSWORD=postgres123 psql -h 127.0.0.1 -p 30433 -U postgres -d postgres"
     echo ""
-    PGPASSWORD=mongo123 psql -h 127.0.0.1 -p 30433 -U postgres -d postgres
+    PGPASSWORD=postgres123 psql -h 127.0.0.1 -p 30433 -U postgres -d postgres
 }
 
 connect_pgs() {
     echo "PostgreSQL — Read/Only (replica)"
     echo "  Host:     127.0.0.1:30434"
     echo "  User:     postgres"
-    echo "  Password: mongo123"
+    echo "  Password: postgres123"
     echo "  Database: postgres"
     echo ""
     echo "  Command:"
-    echo "    PGPASSWORD=mongo123 psql -h 127.0.0.1 -p 30434 -U postgres -d postgres"
+    echo "    PGPASSWORD=postgres123 psql -h 127.0.0.1 -p 30434 -U postgres -d postgres"
     echo ""
-    PGPASSWORD=mongo123 psql -h 127.0.0.1 -p 30434 -U postgres -d postgres
+    PGPASSWORD=postgres123 psql -h 127.0.0.1 -p 30434 -U postgres -d postgres
 }
 
 connect_mongo() {
@@ -53,17 +53,17 @@ connect_mongo() {
 
 connect_amqp() {
     echo "ActiveMQ Artemis — Core AMQP"
-    echo "  Host:     localhost:30436"
+    echo "  Host:     127.0.0.1:30436"
     echo "  User:     admin"
     echo "  Password: admin123"
     echo ""
     echo "  Connection URL:"
-    echo "    amqp://admin:admin123@localhost:30436"
+    echo "    amqp://admin:admin123@127.0.0.1:30436"
 }
 
 connect_amqp_http() {
     echo "ActiveMQ Artemis — HTTP Console"
-    echo "  URL:      http://localhost:30437/console"
+    echo "  URL:      http://127.0.0.1:30437/console"
     echo "  User:     admin"
     echo "  Password: admin123"
 }

@@ -146,12 +146,12 @@ kubectl wait --for=condition=ready pod -n ${NAMESPACE} -l app.kubernetes.io/inst
 kubectl wait --for=condition=ready pod -n ${NAMESPACE} -l app=mongodb --timeout=180s 2>/dev/null || true
 kubectl wait --for=condition=ready pod -n ${NAMESPACE} -l app=activemq --timeout=240s 2>/dev/null || true
 
-# Wait for primary to be ready, then set postgres password to mongo123
+# Wait for primary to be ready, then set postgres password to postgres123
 echo "    Setting postgres password..."
-kubectl wait --for=condition=ready pod -n ${NAMESPACE} -l cnpg.io/cluster=postgres-cluster,cnpg.io/instance-role=primary --timeout=120s 2>/dev/null || true
-PRIMARY_POD=$(kubectl get pod -n ${NAMESPACE} -l cnpg.io/cluster=postgres-cluster,cnpg.io/instance-role=primary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+kubectl wait --for=condition=ready pod -n ${NAMESPACE} -l cnpg.io/cluster=postgres-cluster,cnpg.io/instanceRole=primary --timeout=120s 2>/dev/null || true
+PRIMARY_POD=$(kubectl get pod -n ${NAMESPACE} -l cnpg.io/cluster=postgres-cluster,cnpg.io/instanceRole=primary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 if [[ -n "${PRIMARY_POD}" ]]; then
-    kubectl exec -it ${PRIMARY_POD} -n ${NAMESPACE} -- psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'mongo123';" 2>/dev/null || true
+    kubectl exec -it ${PRIMARY_POD} -n ${NAMESPACE} -- psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'postgres123';" 2>/dev/null || true
 fi
 
 # Initialize MongoDB replica set (if not already done)
@@ -180,8 +180,8 @@ kubectl get pods -n ${NAMESPACE} 2>/dev/null
 
 echo ""
 echo "=== Connection Info ==="
-echo "  PostgreSQL RW: localhost:30433 (postgres/mongo123)"
-echo "  PostgreSQL RO: localhost:30434 (postgres/mongo123)"
+echo "  PostgreSQL RW: localhost:30433 (postgres/postgres123)"
+echo "  PostgreSQL RO: localhost:30434 (postgres/postgres123)"
 echo "  MongoDB:       localhost:30435 (admin/mongo123)"
 echo "  ActiveMQ Core: localhost:30436 (admin/admin123)"
 echo "  ActiveMQ HTTP: http://localhost:30437/console"
