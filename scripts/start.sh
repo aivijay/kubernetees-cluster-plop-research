@@ -4,8 +4,22 @@
 
 set -e
 
-NAMESPACE="cnpg-system"
+# k3d needs system docker socket
+export DOCKER_HOST="unix:///var/run/docker.sock"
+
+# Define cluster name early — used throughout
 CLUSTER_NAME="k8s-test"
+
+# k3d merges config into ~/.kube/config (not ~/.kube/k3d-<cluster>)
+# Use default kubeconfig path — kubectl finds it there
+export KUBECONFIG="${HOME}/.kube/config"
+
+# Fix kubeconfig server address — k3d writes "https://0.0.0.0:PORT" but kubectl needs "https://127.0.0.1:PORT"
+if grep -q "server: https://0.0.0.0:" "${KUBECONFIG}" 2>/dev/null; then
+    sed -i 's|https://0.0.0.0:|https://127.0.0.1:|g' "${KUBECONFIG}"
+fi
+
+NAMESPACE="cnpg-system"
 
 echo "=== Kubernetees Cluster PLOP — Start ==="
 
@@ -37,9 +51,11 @@ fi
 
 # Create secrets
 echo "[3/6] Creating secrets..."
+# CNPG Cluster spec uses initdb.secret.name=postgres-secret (password: postgres123)
+# superuserSecretarname controls which secret holds the superuser password
 kubectl create secret generic postgres-auth \
     --from-literal=username=postgres \
-    --from-literal=password=mongo123 \
+    --from-literal=password=postgres123 \
     -n ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
 kubectl create secret generic mongo-init \
     --from-literal=username=admin \
@@ -129,6 +145,14 @@ echo "    Waiting for all pods to be ready..."
 kubectl wait --for=condition=ready pod -n ${NAMESPACE} -l app.kubernetes.io/instance=cnpg-operator --timeout=120s 2>/dev/null || true
 kubectl wait --for=condition=ready pod -n ${NAMESPACE} -l app=mongodb --timeout=180s 2>/dev/null || true
 kubectl wait --for=condition=ready pod -n ${NAMESPACE} -l app=activemq --timeout=240s 2>/dev/null || true
+
+# Wait for primary to be ready, then set postgres password to mongo123
+echo "    Setting postgres password..."
+kubectl wait --for=condition=ready pod -n ${NAMESPACE} -l cnpg.io/cluster=postgres-cluster,cnpg.io/instance-role=primary --timeout=120s 2>/dev/null || true
+PRIMARY_POD=$(kubectl get pod -n ${NAMESPACE} -l cnpg.io/cluster=postgres-cluster,cnpg.io/instance-role=primary -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+if [[ -n "${PRIMARY_POD}" ]]; then
+    kubectl exec -it ${PRIMARY_POD} -n ${NAMESPACE} -- psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'mongo123';" 2>/dev/null || true
+fi
 
 # Initialize MongoDB replica set (if not already done)
 echo ""
