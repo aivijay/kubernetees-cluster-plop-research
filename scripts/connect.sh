@@ -2,45 +2,53 @@
 # kubernetees-cluster-plop — Connect to any service
 # Usage: ./connect.sh [pg|pgs|mongo|amqp|amqp-http|console]
 
+# k3d needs system docker socket
+export DOCKER_HOST="unix:///var/run/docker.sock"
+export KUBECONFIG="${HOME}/.kube/config"
+# Fix kubeconfig server address (k3d bug)
+if grep -q "server: https://0.0.0.0:" "${KUBECONFIG}" 2>/dev/null; then
+    sed -i 's|https://0.0.0.0:|https://127.0.0.1:|g' "${KUBECONFIG}"
+fi
+
 NAMESPACE="cnpg-system"
 
 connect_pg() {
     echo "PostgreSQL — Read/Write (primary)"
-    echo "  Host:     localhost:30433"
+    echo "  Host:     127.0.0.1:30433"
     echo "  User:     postgres"
     echo "  Password: mongo123"
     echo "  Database: postgres"
     echo ""
     echo "  Command:"
-    echo "    psql -h localhost -p 30433 -U postgres -d postgres"
+    echo "    PGPASSWORD=mongo123 psql -h 127.0.0.1 -p 30433 -U postgres -d postgres"
     echo ""
-    PGPASSWORD=mongo123 psql -h localhost -p 30433 -U postgres -d postgres
+    PGPASSWORD=mongo123 psql -h 127.0.0.1 -p 30433 -U postgres -d postgres
 }
 
 connect_pgs() {
     echo "PostgreSQL — Read/Only (replica)"
-    echo "  Host:     localhost:30434"
+    echo "  Host:     127.0.0.1:30434"
     echo "  User:     postgres"
     echo "  Password: mongo123"
     echo "  Database: postgres"
     echo ""
     echo "  Command:"
-    echo "    psql -h localhost -p 30434 -U postgres -d postgres"
+    echo "    PGPASSWORD=mongo123 psql -h 127.0.0.1 -p 30434 -U postgres -d postgres"
     echo ""
-    PGPASSWORD=mongo123 psql -h localhost -p 30434 -U postgres -d postgres
+    PGPASSWORD=mongo123 psql -h 127.0.0.1 -p 30434 -U postgres -d postgres
 }
 
 connect_mongo() {
     echo "MongoDB — Replica Set rs0"
-    echo "  Host:     localhost:30435"
+    echo "  Host:     127.0.0.1:30435"
     echo "  User:     admin"
     echo "  Password: mongo123"
     echo "  AuthDB:   admin"
     echo ""
     echo "  Command:"
-    echo "    mongosh -h localhost:30435 -u admin -p mongo123 --authenticationDatabase admin"
+    echo "    mongosh -h 127.0.0.1:30435 -u admin -p mongo123 --authenticationDatabase admin"
     echo ""
-    mongosh -h localhost:30435 -u admin -p mongo123 --authenticationDatabase admin
+    mongosh -h 127.0.0.1:30435 -u admin -p mongo123 --authenticationDatabase admin
 }
 
 connect_amqp() {
