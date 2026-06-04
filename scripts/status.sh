@@ -70,8 +70,8 @@ fi
 
 echo ""
 echo "=== Connection Info ==="
-echo "  PostgreSQL RW: localhost:30433  (postgres/mongo123)"
-echo "  PostgreSQL RO: localhost:30434  (postgres/mongo123)"
+echo "  PostgreSQL RW: 127.0.0.1:30433  (postgres/mongo123)"
+echo "  PostgreSQL RO: 127.0.0.1:30434  (postgres/mongo123)"
 echo "  MongoDB:       localhost:30435  (admin/mongo123)"
 echo "  ActiveMQ Core: localhost:30436  (admin/admin123)"
 echo "  ActiveMQ HTTP: http://localhost:30437/console"
