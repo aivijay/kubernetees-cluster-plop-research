@@ -1,0 +1,224 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: activemq-secret
+  namespace: cnpg-system
+type: Opaque
+stringData:
+  username: admin
+  password: admin123
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: activemq-master
+  namespace: cnpg-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: activemq
+      role: master
+  template:
+    metadata:
+      labels:
+        app: activemq
+        role: master
+    spec:
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: activemq
+          image: apache/activemq-artemis:2.36.0
+          env:
+            - name: ARTEMIS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: activemq-secret
+                  key: username
+            - name: ARTEMIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: activemq-secret
+                  key: password
+          ports:
+            - containerPort: 61616
+              name: core
+            - containerPort: 8161
+              name: http
+            - containerPort: 5672
+              name: amqp
+            - containerPort: 61613
+              name: stomp
+          volumeMounts:
+            - name: activemq-data
+              mountPath: /var/lib/artemisinstance
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /var/lib/artemisinstance && cd /var/lib/artemisinstance
+              /opt/activemq-artemis/bin/artemis create . --user admin --password admin --role admin --force --allow-anonymous
+              /var/lib/artemisinstance/bin/artemis run
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - curl -sf http://localhost:8161/ || exit 0
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 20
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - ps aux | grep -q artemis || exit 1
+            initialDelaySeconds: 120
+            periodSeconds: 30
+      volumes:
+        - name: activemq-data
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: activemq-slave
+  namespace: cnpg-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: activemq
+      role: slave
+  template:
+    metadata:
+      labels:
+        app: activemq
+        role: slave
+    spec:
+      securityContext:
+        runAsUser: 0
+      containers:
+        - name: activemq
+          image: apache/activemq-artemis:2.36.0
+          env:
+            - name: ARTEMIS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: activemq-secret
+                  key: username
+            - name: ARTEMIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: activemq-secret
+                  key: password
+          ports:
+            - containerPort: 61616
+              name: core
+            - containerPort: 8161
+              name: http
+            - containerPort: 5672
+              name: amqp
+            - containerPort: 61613
+              name: stomp
+          volumeMounts:
+            - name: activemq-data
+              mountPath: /var/lib/artemisinstance
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /var/lib/artemisinstance && cd /var/lib/artemisinstance
+              /opt/activemq-artemis/bin/artemis create . --user admin --password admin --role admin --force --allow-anonymous
+              /var/lib/artemisinstance/bin/artemis run
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - curl -sf http://localhost:8161/ || exit 0
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 20
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - ps aux | grep -q artemis || exit 1
+            initialDelaySeconds: 120
+            periodSeconds: 30
+      volumes:
+        - name: activemq-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: activemq-master
+  namespace: cnpg-system
+spec:
+  type: ClusterIP
+  selector:
+    app: activemq
+    role: master
+  ports:
+    - port: 61616
+      name: core
+    - port: 8161
+      name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: activemq-slave
+  namespace: cnpg-system
+spec:
+  type: ClusterIP
+  selector:
+    app: activemq
+    role: slave
+  ports:
+    - port: 61616
+      name: core
+    - port: 8161
+      name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: activemq
+  namespace: cnpg-system
+spec:
+  type: NodePort
+  selector:
+    app: activemq
+  ports:
+    - port: 61616
+      nodePort: 30436
+      name: core
+    - port: 8161
+      nodePort: 30437
+      name: http
+    - port: 5672
+      nodePort: 30438
+      name: amqp
+    - port: 61613
+      nodePort: 30439
+      name: stomp

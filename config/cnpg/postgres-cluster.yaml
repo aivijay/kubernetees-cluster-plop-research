@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: cnpg-system
+type: Opaque
+stringData:
+  username: postgres
+  password: postgres123
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-cluster
+  namespace: cnpg-system
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.1
+  primaryUpdateStrategy: unsupervised
+  maxSyncReplicas: 1
+  minSyncReplicas: 1
+  bootstrap:
+    initdb:
+      postInitSQL:
+        - ALTER SYSTEM SET port = 5432;
+      secret:
+        name: postgres-secret
+  storage:
+    size: 5Gi
+    storageClass: local-path
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: ScheduleAnyway
+      labelSelector:
+        matchLabels:
+          cnpg.io/cluster: postgres-cluster
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"

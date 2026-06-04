@@ -1,0 +1,17 @@
+# k3d cluster state (local to each machine)
+*.log
+/tmp/
+.pools/
+cnpg-data/
+
+# Helm
+.bin/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tar.gz
+*.tmp
