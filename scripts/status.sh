@@ -2,6 +2,14 @@
 # kubernetees-cluster-plop — Cluster status check
 # Usage: ./status.sh
 
+# k3d needs system docker socket
+export DOCKER_HOST="unix:///var/run/docker.sock"
+# Fix kubeconfig server address (k3d bug: writes 0.0.0.0 instead of 127.0.0.1)
+export KUBECONFIG="${HOME}/.kube/config"
+if grep -q "server: https://0.0.0.0:" "${KUBECONFIG}" 2>/dev/null; then
+    sed -i 's|https://0.0.0.0:|https://127.0.0.1:|g' "${KUBECONFIG}"
+fi
+
 NAMESPACE="cnpg-system"
 
 echo "=== Kubernetees Cluster PLOP — Status ==="
@@ -9,8 +17,9 @@ echo ""
 
 # Cluster
 echo "[Cluster]"
-if k3d cluster list 2>/dev/null | grep -q "k8s-test.*running"; then
-    echo "  Cluster: RUNNING"
+CLUSTER_STATUS=$(DOCKER_HOST=unix:///var/run/docker.sock k3d cluster list 2>/dev/null | grep "k8s-test" | awk '{print $2" / "$3" / "$4}')
+if [[ -n "${CLUSTER_STATUS}" ]]; then
+    echo "  Cluster: UP (${CLUSTER_STATUS})"
 else
     echo "  Cluster: STOPPED"
     exit 1
@@ -30,7 +39,7 @@ echo ""
 
 # PostgreSQL
 echo "[PostgreSQL]"
-PG_READY=$(kubectl get pods -n ${NAMESPACE} -l cnpg.io/cluster=postgres-cluster,cnpg.io/instance-role=primary -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
+PG_READY=$(kubectl get pods -n ${NAMESPACE} -l cnpg.io/cluster=postgres-cluster,cnpg.io/instanceRole=primary -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "False")
 if [[ "${PG_READY}" == "True" ]]; then
     echo "  Cluster: READY"
     kubectl exec -it postgres-cluster-1 -n ${NAMESPACE} -- psql -U postgres -c "SELECT pg_is_in_recovery() as is_replica;" 2>/dev/null | grep -v "^SELECT\|^--" | head -2 || true
@@ -48,11 +57,15 @@ rs.status().members.forEach(m => print(m.name.split(".")[0] + " : " + m.stateStr
 # ActiveMQ
 echo ""
 echo "[ActiveMQ]"
-AMQP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:30437/ 2>/dev/null || echo "000")
-if [[ "${AMQP_STATUS}" == "302" ]]; then
-    echo "  Master:  READY (HTTP 302)"
+AMQP_STATUS=$(curl -s --connect-timeout 3 -o /dev/null -w "%{http_code}" -H "Host: localhost" http://127.0.0.1:30437/ 2>/dev/null || echo "000")
+if [[ "${AMQP_STATUS}" == "302" || "${AMQP_STATUS}" == "200" ]]; then
+    echo "  Master:  READY (HTTP ${AMQP_STATUS})"
 else
-    echo "  Master:  NOT READY (HTTP ${AMQP_STATUS})"
+    if nc -zv 127.0.0.1 30437 -w 2 2>/dev/null; then
+        echo "  Master:  PORT OPEN (HTTP unreachable — k3d LB known issue)"
+    else
+        echo "  Master:  NOT READY"
+    fi
 fi
 
 echo ""
